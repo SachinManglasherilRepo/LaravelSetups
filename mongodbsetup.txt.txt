@@ -1,0 +1,17 @@
+Steps to setup Mongodb:
+---------
+
+Go to mongodb site-> go to products and install community edition 
+
+Go to download mongo shell -> install msi version as per os
+
+save the path in system environment .
+
+after setup is completed open cmd prompt and type mongod --version
+
+run mongosh and mongoshell will start running.
+
+Show dbs --> it will shhow all databases.
+
+
+ 
