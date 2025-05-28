@@ -1,0 +1,135 @@
+1) Create A laravel multi auth System .
+
+steps:
+   1) check if composer package is installed.
+      composer create-project --prefer-dist laravel/laravel:^11 myproject
+   2) steps to install breeze:
+      composer require laravel/breeze --dev
+
+      php artisan breeze:install
+
+      npm install 
+
+      npm run dev
+   3) Open the user migration file and add role field
+     $table->enum('role',['admin','agent','user'])->default('user');
+   
+   4) create a seeder to add various roles in db
+    php artisan make:seeder UsersTableSeeder
+
+       DB::table('users')->insert([
+            //admin
+            [
+                'name' =>  'Admin',
+                'email' => 'admin@gmail.com',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+            ],
+
+            //agent
+            [
+                'name' =>  'Agent',
+                'email' => 'agent@gmail.com',
+                'password' => Hash::make('password'),
+                'role' => 'agent',
+            ],
+
+            //user
+            [
+                'name' =>  'User',
+                'email' => 'user@gmail.com',
+                'password' => Hash::make('password'),
+                'role' => 'user',
+            ]
+        ]);
+       
+
+    5) Update the database seeders file and add this line inside the run method
+
+        $this->call(UsersTableSeeder::class);
+
+      php artisan migrate:fresh --seed
+
+     6) creating new routes,controllers for both the admin and agent users
+
+	php artisan make:controller AdminController
+
+	php artisan make:controller AgentController
+
+    7) Update the AdminController.php to add method
+
+		public function dashboard(){
+ 		 return view('admin.dashboard');
+		}
+		Also, update the AgentController.php to add a similar method
+
+		public function dashboard(){
+		  return view('agent.dashboard');
+		}
+    8) Create the dashboard files for admin and agent insider the views folder (resources/views/admin/dashboard.blade.php) for admin and for agent 
+(resources/views/agent/dashboard.blade.php).
+
+   9)  Update the authenticated session controller in (app/Http/Controllers/Auth/AuthenticatedSessionController) to include the following redirection logic so that a user type is redirected to a specific dashboard upon login
+
+public function store(LoginRequest $request): RedirectResponse
+    {
+        $request->authenticate();
+
+        $request->session()->regenerate();
+        
+        $url = "";
+        if($request->user()->role === "admin"){
+            $url = "admin/dashboard";
+        }elseif($request->user()->role === "agent"){
+            $url = "agent/dashboard";
+        }else{
+            $url = "dashboard";  
+        }
+
+        return redirect()->intended($url);
+    }
+
+ 10) create a middleware for role 
+      php artisan make:middleware Role
+
+       public function handle(Request $request, Closure $next, $role): Response
+    {
+        if($request->user()->role !== $role){
+            return redirect('dashboard');
+        }
+        return $next($request);
+    }
+
+
+Note: In laravel 11 kernel.php file doesnot exists , so middleware is added like in app/bootstrap.php
+
+ref:https://dev.to/grantholle/exploring-middleware-in-laravel-11-2e10
+
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        web: __DIR__.'/../routes/web.php',
+        commands: __DIR__.'/../routes/console.php',
+        health: '/up',
+    )
+    ->withMiddleware(function (Middleware $middleware) {
+        //
+        $middleware->alias([
+            'role' => \App\Http\Middleware\Role::class,
+        ]);
+    })
+    ->withExceptions(function (Exceptions $exceptions) {
+        //
+    })->create();
+
+11) We will now update the routes file(routes/web.php) to enforce the middleware we have created in specific routes
+
+//admin routes
+Route::middleware(['auth','role:admin'])->group(function () {
+    Route::get('/admin/dashboard',[AdminController::class,'dashboard'])->name('admin.dashboard');
+});
+
+
+//agent routes
+Route::middleware(['auth','role:agent'])->group(function () {
+    Route::get('/agent/dashboard',[AgentController::class,'dashboard'])->name('agent.dashboard');
+});
